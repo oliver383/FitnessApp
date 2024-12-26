@@ -1,0 +1,55 @@
+<!-- templates/home.html-->
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+Hi {{ user.username }}!
+    <h2>Fill Out Your Profile</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.age.label }}: {{ form.age }}
+
+    <label for="id_height">Größe (cm):</label>
+    {{ form.height }}
+    <p>Aktuelle Größe: <span id="heightOutput">{{ form.height.value }}</span> cm</p>
+
+    <label for="id_weight">Gewicht (kg):</label>
+    {{ form.weight }}
+    <p>Aktuelles Gewicht: <span id="weightOutput">{{ form.weight.value }}</span> kg</p>
+
+    <label for="id_goal_weight">Zielgewicht (kg):</label>
+    {{ form.goal_weight }}
+    <p>Zielgewicht: <span id="goalWeightOutput">{{ form.goal_weight.value }}</span> kg</p>
+
+    {{ form.training_level.label }}: {{ form.training_level }}
+    {{ form.training_days.label }}: {{ form.training_days }}
+    {{ form.goals.label }}: {{ form.goals }}
+    {{ form.equipment.label }}: {{ form.equipment }}
+    {{ form.training_duration.label }}: {{ form.training_duration }}
+
+    <button type="submit">Save</button>
+</form>
+    <script>
+    // Update displayed value dynamically
+    document.querySelector('#id_height').addEventListener('input', function() {
+        document.querySelector('#heightOutput').textContent = this.value;
+    });
+    document.querySelector('#id_weight').addEventListener('input', function() {
+        document.querySelector('#weightOutput').textContent = this.value;
+    });
+    document.querySelector('#id_goal_weight').addEventListener('input', function() {
+        document.querySelector('#goalWeightOutput').textContent = this.value;
+    });
+</script>
+<form action="{% url 'logout' %}" method="post">
+  {% csrf_token %}
+  <button type="submit">Log Out</button>
+</form>
+{% else %}
+<p>You are not logged in</p>
+<a href="{% url 'login' %}">Log In</a>
+    <a href="{% url 'signup' %}">Sign Up</a>
+{% endif %}
+{% endblock %}

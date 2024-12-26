@@ -1,0 +1,37 @@
+<!-- templates/home.html-->
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+Hi {{ user.username }}!
+        {% if schedule %}
+        <h2>Your Weekly Recommendations</h2>
+        <div>
+            {% for day, recommendations in schedule.items %}
+                <h3>{{ day }}</h3>
+                <ul>
+                    {% for rec in recommendations %}
+                        <li>{{ rec.exercise.name }} - {{ rec.exercise.duration }} minutes</li>
+                    {% empty %}
+                        <li>No recommendations for this day</li>
+                    {% endfor %}
+                </ul>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>You have no recommendations. Please update your profile or goals to generate a training plan.</p>
+    {% endif %}
+    <a href="{% url 'update_recommendations' %}">update_recommendations</a> <a href="{% url 'profile' %}">Profile</a>
+
+<form action="{% url 'logout' %}" method="post">
+  {% csrf_token %}
+  <button type="submit">Log Out</button>
+</form>
+{% else %}
+<p>You are not logged in</p>
+<a href="{% url 'login' %}">Log In</a>
+    <a href="{% url 'signup' %}">Sign Up</a>
+{% endif %}
+{% endblock %}
