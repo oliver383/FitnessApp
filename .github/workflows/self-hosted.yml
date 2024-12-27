@@ -27,4 +27,4 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: mv _work/FitnessApp/FitnessApp/* /home/django-admin/server/
+        run: mv /home/django-admin/actions-runner/_work/FitnessApp/FitnessApp/* /home/django-admin/server/
