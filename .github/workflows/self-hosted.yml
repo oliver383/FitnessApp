@@ -24,15 +24,7 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-        with:
-          path: /home/django-admin/server/
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: echo Hello
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo 1
-          echo 2.
+        run: mv _work/FitnessApp/FitnessApp/* /home/django-admin/server/
