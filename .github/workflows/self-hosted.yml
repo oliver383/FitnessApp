@@ -26,5 +26,9 @@ jobs:
       - uses: actions/checkout@v4
 
       # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: mv /home/django-admin/actions-runner/_work/FitnessApp/FitnessApp/* /home/django-admin/server/
+      - name: Sync the changes into the working directory
+        run: rsync -a /home/django-admin/actions-runner/_work/FitnessApp/FitnessApp/ /home/django-admin/server/
+
+      # Runs a single command using the runners shell
+      - name: Restart gunicorn
+        run: systemctl restart gunicorn
