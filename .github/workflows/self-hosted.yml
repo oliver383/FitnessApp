@@ -31,4 +31,4 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Restart gunicorn
-        run: systemctl restart gunicorn
+        run: sudo systemctl restart gunicorn
