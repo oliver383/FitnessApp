@@ -1,37 +1,87 @@
-<!-- templates/home.html-->
 {% extends "base.html" %}
 
 {% block title %}Home{% endblock %}
 
 {% block content %}
-{% if user.is_authenticated %}
-Hi {{ user.username }}!
-        {% if schedule %}
-        <h2>Your Weekly Recommendations</h2>
-        <div>
-            {% for day, recommendations in schedule.items %}
-                <h3>{{ day }}</h3>
-                <ul>
-                    {% for rec in recommendations %}
-                        <li>{{ rec.exercise.name }} - {{ rec.exercise.duration }} minutes</li>
-                    {% empty %}
-                        <li>No recommendations for this day</li>
-                    {% endfor %}
-                </ul>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>You have no recommendations. Please update your profile or goals to generate a training plan.</p>
-    {% endif %}
-    <a href="{% url 'update_recommendations' %}">update_recommendations</a> <a href="{% url 'profile' %}">Profile</a>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const DAYS_OF_WEEK = [
+        'sonntag', 'montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag'
+    ];
 
-<form action="{% url 'logout' %}" method="post">
-  {% csrf_token %}
-  <button type="submit">Log Out</button>
-</form>
+    const todayIndex = new Date().getDay();
+    const today = DAYS_OF_WEEK[todayIndex];
+
+    document.querySelectorAll('.accordion-item').forEach((item) => {
+        const button = item.querySelector('.accordion-button');
+        const collapse = item.querySelector('.accordion-collapse');
+        const dayName = button.textContent.trim().toLowerCase();
+
+        if (dayName === today) {
+            // Highlight today's accordion header
+            button.classList.add('bg-warning', 'text-dark'); // Optional styling
+
+            // Open today's accordion item
+            button.setAttribute('aria-expanded', 'true');
+            collapse.classList.add('show'); // Open this accordion item
+        } else {
+            // Ensure other accordion items are closed
+            button.setAttribute('aria-expanded', 'false');
+            collapse.classList.remove('show');
+        }
+    });
+});
+</script>
+
+
+{% if user.is_authenticated %}
+<div class="display-3">Hi {{ user.username }}!</div>
+    {% if schedule %}
+    <div class="h5">Dein Trainingsvorschlag für diese Woche</div>
+    <div class="accordion" id="accordionExample">
+        {% for day, recommendations in schedule.items %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ forloop.counter }}">
+                    {{ day }}
+                </button>
+            </h2>
+            <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#accordionExample">
+                <div class="accordion-body">
+                    {% if recommendations %}
+                        {% for rec in recommendations %}
+                        <div class="exercise">
+                            <div class="fs-4 fw-bold d-inline-block">{{ rec.exercise.name }}</div>
+                                {% if rec.exercise.url %}
+                                <a href="{{ rec.exercise.url }}" target="_blank" rel="noopener noreferrer">Tutorial</a>
+                                {% endif %}
+
+                            <p> {{ goal_reps }}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                                    <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+                                    <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
+                                </svg> / {{ goal_sets }} sets / {{ goal_intensity }}  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-graph-up-arrow" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm10 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4.9l-3.613 4.417a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61L13.445 4H10.5a.5.5 0 0 1-.5-.5"/>
+</svg> / {{ goal_sets_rest }}</p>
+                        </div>
+                        {% empty %}
+                        <p>Erholungstag</p>
+                        {% endfor %}
+                    {% else %}
+                    <p>Erholungstag</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}    
+    </div>
+    {% else %}
+    <p>You have no recommendations. Please update your profile or goals to generate a training plan.</p>
+    {% endif %}
+   
 {% else %}
 <p>You are not logged in</p>
 <a href="{% url 'login' %}">Log In</a>
-    <a href="{% url 'signup' %}">Sign Up</a>
+<a href="{% url 'signup' %}">Sign Up</a>
 {% endif %}
 {% endblock %}

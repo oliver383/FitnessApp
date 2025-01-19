@@ -1,55 +1,172 @@
-<!-- templates/home.html-->
+<!-- templates/home.html -->
 {% extends "base.html" %}
 
 {% block title %}Profile{% endblock %}
 
 {% block content %}
-{% if user.is_authenticated %}
-Hi {{ user.username }}!
-    <h2>Fill Out Your Profile</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.age.label }}: {{ form.age }}
+    {% if user.is_authenticated %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const trainingDays = document.querySelectorAll('input[name="training_days"]');
+        const trainingLevel = document.querySelector('#id_training_level');
+        const dayError = document.getElementById('dayError');
+        console.log("days:")
+        console.log(trainingDays)
+        console.log("level:")
+        console.log(trainingLevel)
+        console.log("done")
+        // Validate the selected training days
+        function validateTrainingDays() {
+            const selectedDays = Array.from(trainingDays)
+                .map((checkbox, index) => (checkbox.checked ? index : null))
+                .filter(index => index !== null);
 
-    <label for="id_height">Größe (cm):</label>
-    {{ form.height }}
-    <p>Aktuelle Größe: <span id="heightOutput">{{ form.height.value }}</span> cm</p>
+            console.log(selectedDays.length)
 
-    <label for="id_weight">Gewicht (kg):</label>
-    {{ form.weight }}
-    <p>Aktuelles Gewicht: <span id="weightOutput">{{ form.weight.value }}</span> kg</p>
+            if (selectedDays.length === 0) {
+                dayError.textContent = "You must select at least one day.";
+                dayError.style.display = 'block';
+                return false;
+            }
 
-    <label for="id_goal_weight">Zielgewicht (kg):</label>
-    {{ form.goal_weight }}
-    <p>Zielgewicht: <span id="goalWeightOutput">{{ form.goal_weight.value }}</span> kg</p>
+            if (selectedDays.length === 7) {
+                dayError.textContent = "You cannot select all 7 days.";
+                dayError.style.display = 'block';
+                return false;
+            }
 
-    {{ form.training_level.label }}: {{ form.training_level }}
-    {{ form.training_days.label }}: {{ form.training_days }}
-    {{ form.goals.label }}: {{ form.goals }}
-    {{ form.equipment.label }}: {{ form.equipment }}
-    {{ form.training_duration.label }}: {{ form.training_duration }}
+            const isBeginner = trainingLevel.value === 'beginner';
+            if (isBeginner && hasConsecutiveDays(selectedDays, 3)) {
+                dayError.textContent = "Beginners cannot select more than 2 consecutive days.";
+                dayError.style.display = 'block';
+                return false;
+            }
 
-    <button type="submit">Save</button>
-</form>
-    <script>
-    // Update displayed value dynamically
-    document.querySelector('#id_height').addEventListener('input', function() {
-        document.querySelector('#heightOutput').textContent = this.value;
-    });
-    document.querySelector('#id_weight').addEventListener('input', function() {
-        document.querySelector('#weightOutput').textContent = this.value;
-    });
-    document.querySelector('#id_goal_weight').addEventListener('input', function() {
-        document.querySelector('#goalWeightOutput').textContent = this.value;
+            dayError.style.display = 'none';
+            return true;
+        }
+
+        // Check for consecutive days in the selectedDays array
+        function hasConsecutiveDays(selectedDays, count) {
+            for (let i = 0; i < selectedDays.length; i++) {
+                let isConsecutive = true;
+                for (let j = 0; j < count; j++) {
+                    const expectedIndex = (selectedDays[i] + j) % 7;
+                    if (!selectedDays.includes(expectedIndex)) {
+                        isConsecutive = false;
+                        break;
+                    }
+                }
+                if (isConsecutive) return true;
+            }
+            return false;
+        }
+
+        // Add event listeners to checkboxes and the training level dropdown
+        trainingDays.forEach(checkbox => {
+            checkbox.addEventListener('change', validateTrainingDays);
+        });
+
+        trainingLevel.addEventListener('change', validateTrainingDays);
+
+        // Prevent form submission if validation fails
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function (event) {
+            if (!validateTrainingDays()) {
+                event.preventDefault();
+            }
+        });
     });
 </script>
-<form action="{% url 'logout' %}" method="post">
-  {% csrf_token %}
-  <button type="submit">Log Out</button>
-</form>
-{% else %}
-<p>You are not logged in</p>
-<a href="{% url 'login' %}">Log In</a>
-    <a href="{% url 'signup' %}">Sign Up</a>
-{% endif %}
+
+
+        <h1>Welcome, {{ user.username }}!</h1>
+        <h2>Fill Out Your Profile</h2>
+        {% if error_message %}
+            <div class="alert alert-danger">
+                {{ error_message }}
+            </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div>
+                <label for="id_age">{{ form.age.label }}:</label>
+                {{ form.age }}
+            </div>
+
+            <div>
+                <label for="id_height">Größe (cm):</label>
+                {{ form.height }}
+            </div>
+
+            <div>
+                <label for="id_weight">Gewicht (kg):</label>
+                {{ form.weight }}
+            </div>
+
+            <div>
+                <label for="id_goal_weight">Zielgewicht (kg):</label>
+                {{ form.goal_weight }}
+            </div>
+
+            <div>
+                <label for="id_training_level">{{ form.training_level.label }}:</label>
+                {{ form.training_level }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_training_days" class="form-label">{{ form.training_days.label }}:</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for checkbox in form.training_days %}
+                        <div class="form-check">
+                            {{ checkbox.tag }}
+                            <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                {{ checkbox.choice_label }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <p class="error-message" style="color: red; display: none;" id="dayError">Error</p>
+
+
+            <div>
+                <label>{{ form.goal.label }}:</label>
+                {{ form.goal }}
+            </div>
+
+            <div class="mb-3">
+                <label for="id_equipment" class="form-label">{{ form.equipment.label }}:</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for checkbox in form.equipment %}
+                        <div class="form-check">
+                            {{ checkbox.tag }}
+                            <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                {{ checkbox.choice_label }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <label for="id_training_duration">{{ form.training_duration.label }}:</label>
+                {{ form.training_duration }}
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <!-- Save Button -->
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+        <!-- Logout Button -->
+        <form action="{% url 'logout' %}" method="post" style="margin: 0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Log Out</button>
+        </form>
+
+    {% else %}
+        <p>You are not logged in.</p>
+        <a href="{% url 'login' %}">Log In</a> | <a href="{% url 'signup' %}">Sign Up</a>
+    {% endif %}
 {% endblock %}
