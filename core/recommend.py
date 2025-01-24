@@ -18,136 +18,85 @@ def generate_user_recommendations(user):
     else:
         exercise_count = user_goal.exercise_count_high
 
-    # Fetch exercises filtered by goal and equipment
-    full_body_exercises = Exercise.objects.filter(
-        categories=user_goal
-    ).filter(
-        models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
-    ).distinct()
+    # Utility to filter exercises
+    def filter_exercises(categories=None, body_section=None, exclude_body_section=None,
+                         push_pull=None, exclude_push_pull=None, for_everyone_only=False):
+        queryset = Exercise.objects.filter(categories=categories or user_goal)
+        if body_section:
+            queryset = queryset.filter(body_sections__name=body_section)
+        if exclude_body_section:
+            queryset = queryset.exclude(body_sections__name=exclude_body_section)
+        if push_pull:
+            queryset = queryset.filter(pushpull__name=push_pull)
+        if exclude_push_pull:
+            queryset = queryset.exclude(pushpull__name=exclude_push_pull)
+        if for_everyone_only:
+            queryset = queryset.filter(is_for_everyone=True)
+        return queryset.filter(
+            models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
+        ).distinct()
 
-    upper_body_exercises = Exercise.objects.filter(
-        categories=user_goal,
-        body_sections__name='oberkörper'
-    ).exclude(
-        body_sections__name='unterkörper'
-    ).filter(
-        models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
-    ).distinct()
+    # Define exercise groups with exclusions
+    advanced_exercise_groups = {
+        'Full': filter_exercises(),
+        'Upper': filter_exercises(body_section='oberkörper', exclude_body_section='unterkörper'),
+        'Lower': filter_exercises(body_section='unterkörper', exclude_body_section='oberkörper'),
+        'Push': filter_exercises(push_pull='Push', exclude_push_pull='Pull'),
+        'Pull': filter_exercises(push_pull='Pull', exclude_push_pull='Push'),
+        'Push_Upper': filter_exercises(body_section='oberkörper', push_pull='Push', exclude_body_section='unterkörper'),
+        'Pull_Upper': filter_exercises(body_section='oberkörper', push_pull='Pull', exclude_body_section='unterkörper'),
+    }
 
-    lower_body_exercises = Exercise.objects.filter(
-        categories=user_goal,
-        body_sections__name='unterkörper'
-    ).exclude(
-        body_sections__name='oberkörper'
-    ).filter(
-        models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
-    ).distinct()
+    # Define exercise groups for beginners (only Full, Upper, Lower with `is_for_everyone=True`)
+    beginner_exercise_groups = {
+        'Full': filter_exercises(for_everyone_only=True),
+        'Upper': filter_exercises(body_section='oberkörper', exclude_body_section='unterkörper', for_everyone_only=True),
+        'Lower': filter_exercises(body_section='unterkörper', exclude_body_section='oberkörper', for_everyone_only=True),
+    }
 
-    push_exercises = Exercise.objects.filter(
-        categories=user_goal,
-        pushpull__name='Push'
-    ).exclude(
-        pushpull__name='Pull'
-    ).filter(
-        models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
-    ).distinct()
-
-    pull_exercises = Exercise.objects.filter(
-        categories=user_goal,
-        pushpull__name='Pull'
-    ).exclude(
-        pushpull__name='Push'
-    ).filter(
-        models.Q(equipment_needed__in=user_equipment) | models.Q(equipment_needed=None)
-    ).distinct()
-
-    print(f"Full body exercises: {full_body_exercises}")
-    print(f"Upper body exercises: {upper_body_exercises}")
-    print(f"Lower body exercises: {lower_body_exercises}")
-    print(f"Push body exercises: {push_exercises}")
-    print(f"Pull body exercises: {pull_exercises}")
+    def add_daily_recommendations(day, workout_type, groups):
+        exercises = list(groups.get(workout_type, []))
+        print(f"Using {workout_type}")
+        daily_exercises = random.sample(exercises, min(len(exercises), exercise_count)) if exercises else []
+        for exercise in daily_exercises:
+            recommendations.append(UserRecommendation(
+                user=user,
+                exercise=exercise,
+                day_of_week=day
+            ))
 
     recommendations = []
 
     if user_profile.training_level == 'advanced':
         # Advanced logic: Rules based on number of days
-        pattern = []
-        if len(training_days) == 1:
-            pattern = ['Full']
-        elif len(training_days) == 2:
-            pattern = ['Push', 'Pull']
-        elif len(training_days) == 3:
-            pattern = ['Push', 'Pull', 'Legs']
-        elif len(training_days) == 4:
-            pattern = ['Push', 'Pull', 'Push', 'Pull']
-        elif len(training_days) == 5:
-            pattern = ['Push', 'Pull', 'Legs', 'Push', 'Pull']
-        elif len(training_days) == 6:
-            pattern = ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs']
-        else:
-            # TODO: add error
-            pass
+        patterns = {
+            1: ['Full'],
+            2: ['Push', 'Pull'],
+            3: ['Push_Upper', 'Pull_Upper', 'Lower'],
+            4: ['Push', 'Pull', 'Push', 'Pull'],
+            5: ['Push_Upper', 'Pull_Upper', 'Lower', 'Push_Upper', 'Pull_Upper'],
+            6: ['Push_Upper', 'Pull_Upper', 'Lower', 'Push_Upper', 'Pull_Upper', 'Lower'],
+        }
+        pattern = patterns.get(len(training_days), [])
 
         for i, day in enumerate(training_days):
             workout_type = pattern[i % len(pattern)]
-            if workout_type == 'Push' and push_exercises.exists():
-                print(f"Using Push List")
-                daily_exercises = random.sample(list(push_exercises),
-                                                min(len(push_exercises), exercise_count))
-            elif workout_type == 'Pull' and pull_exercises.exists():
-                print(f"Using Pull List")
-                daily_exercises = random.sample(list(pull_exercises),
-                                                min(len(pull_exercises), exercise_count))
-            elif workout_type == 'Legs' and lower_body_exercises.exists():
-                print(f"Using Lower Body List")
-                daily_exercises = random.sample(list(lower_body_exercises),
-                                                min(len(lower_body_exercises), exercise_count))
-            elif workout_type == 'Full' and full_body_exercises.exists():
-                print(f"Using Full Body List")
-                daily_exercises = random.sample(list(full_body_exercises),
-                                                min(len(full_body_exercises), exercise_count))
-            else:
-                daily_exercises = []
-
-            # Add recommendations for the day
-            for exercise in daily_exercises:
-                recommendations.append(UserRecommendation(
-                    user=user,
-                    exercise=exercise,
-                    day_of_week=day
-                ))
-    else:
-        # Beginner logic: Alternating upper and lower body on consecutive days
+            add_daily_recommendations(day, workout_type, advanced_exercise_groups)
+    else:  # Beginner logic
         use_upper_body = True
         for i, day in enumerate(training_days):
             if has_consecutive_days(training_days, i):
-                if use_upper_body and upper_body_exercises.exists():
-                    print(f"Using Upper Body List")
-                    daily_exercises = random.sample(list(upper_body_exercises),
-                                                    min(len(upper_body_exercises), exercise_count))
-                    use_upper_body = False
-                elif lower_body_exercises.exists():
-                    print(f"Using Lower Body List")
-                    daily_exercises = random.sample(list(lower_body_exercises),
-                                                    min(len(lower_body_exercises), exercise_count))
-                    use_upper_body = True
-                else:
-                    daily_exercises = []  # Fallback
+                # Alternate between Upper and Lower body for consecutive days
+                workout_type = 'Upper' if use_upper_body else 'Lower'
+                use_upper_body = not use_upper_body
             else:
-                print(f"Using Full Body List")
-                daily_exercises = random.sample(list(full_body_exercises),
-                                                min(len(full_body_exercises),
-                                                    exercise_count)) if full_body_exercises.exists() else []
+                # Use Full body for non-consecutive days
+                workout_type = 'Full'
 
+            # Add recommendations using beginner-specific exercise groups
+            add_daily_recommendations(day, workout_type, beginner_exercise_groups)
 
-            for exercise in daily_exercises:
-                recommendations.append(UserRecommendation(
-                    user=user,
-                    exercise=exercise,
-                    day_of_week=day
-                ))
-
-
+    # Bulk create recommendations
     UserRecommendation.objects.bulk_create(recommendations)
 
 
